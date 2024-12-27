@@ -70,6 +70,7 @@ extern "C" void app_main(void) {
   oai_init_audio_decoder();
   
   oai_webrtc();
+  set_display_dirty();
 
   while (true) {
     M5.update();
