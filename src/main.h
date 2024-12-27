@@ -16,6 +16,7 @@ void oai_http_request(char *offer, char *answer, const char *secret);
 
 char* fetch_client_secret(char* out_buffer, char *out_secret, size_t out_size);
 void update_display();
+void set_display_dirty();
 
 extern bool is_microphone_active;
 extern bool g_wifi_connected;

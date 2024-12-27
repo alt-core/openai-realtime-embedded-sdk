@@ -52,7 +52,6 @@ static void oai_onconnectionstatechange_task(PeerConnectionState state,
                                   NULL, 7, stack_memory, &task_buffer, 0);
 #endif
   }
-  update_display(); // Update display
 }
 
 static void oai_on_icecandidate_task(char *description, void *user_data) {

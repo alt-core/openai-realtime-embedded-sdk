@@ -18,10 +18,15 @@ static esp_timer_handle_t s_monitor_timer;
 #endif // CONFIG_ENABLE_HEAP_MONITOR
 
 bool is_microphone_active = false;
+bool display_dirty = false;
 extern PeerConnection *peer_connection;
 
-static int debounce_counter = 0; // Counter for debounce
+static int debounce_counter = 0;
 constexpr int debounce_threshold = 6; // Debounce threshold (15*6=90ms)
+
+void set_display_dirty() {
+  display_dirty = true;
+}
 
 extern "C" void app_main(void) {
   esp_err_t ret = nvs_flash_init();
@@ -59,7 +64,8 @@ extern "C" void app_main(void) {
   ESP_ERROR_CHECK(esp_event_loop_create_default());
   peer_init();
   oai_wifi();
-  
+  update_display(); // WiFi connected
+
   oai_init_audio_capture();
   oai_init_audio_decoder();
   
@@ -72,11 +78,16 @@ extern "C" void app_main(void) {
       debounce_counter--;
     } else if (M5.Touch.getCount()) { // Check for screen touch
       is_microphone_active = true;
-      update_display();
+      set_display_dirty();
       debounce_counter = debounce_threshold; // Reset debounce counter
     } else if (is_microphone_active) {
       is_microphone_active = false;
+      set_display_dirty();
+    }
+
+    if (display_dirty) {
       update_display();
+      display_dirty = false;
     }
 
     if (is_peer_connected) {
