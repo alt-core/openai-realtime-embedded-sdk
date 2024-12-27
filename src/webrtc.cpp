@@ -11,6 +11,7 @@
 
 PeerConnection *peer_connection = NULL;
 bool is_peer_connected = false;
+bool is_datachannel_opened = false;
 
 #ifndef LINUX_BUILD
 StaticTask_t task_buffer;
@@ -61,6 +62,23 @@ static void oai_on_icecandidate_task(char *description, void *user_data) {
   peer_connection_set_remote_description(peer_connection, local_buffer);
 }
 
+void send_webrtc_message(const char* message) {
+  if (is_peer_connected && is_datachannel_opened) {
+    peer_connection_datachannel_send(peer_connection, (char*)message, strlen(message));
+  }
+}
+
+static void on_datachannel_open(void* user_data) {
+  is_datachannel_opened = true;
+}
+
+static void on_datachannel_close(void* user_data) {
+}
+
+static void on_datachannel_message(char* msg, size_t size, void* user_data, uint16_t sid) {
+  ESP_LOGI(LOG_TAG, "Received WebRTC message: %.*s", size, msg);
+}
+
 void oai_webrtc() {
   ESP_LOGI(LOG_TAG, "Initializing WebRTC connection");
   // Buffer to store client_secret (256 bytes)
@@ -85,7 +103,7 @@ void oai_webrtc() {
       .ice_servers = {},
       .audio_codec = CODEC_OPUS,
       .video_codec = CODEC_NONE,
-      .datachannel = DATA_CHANNEL_NONE,
+      .datachannel = DATA_CHANNEL_STRING,
       .onaudiotrack = [](uint8_t *data, size_t size, void *userdata) -> void {
 #ifndef LINUX_BUILD
         oai_audio_decode(data, size);
@@ -107,6 +125,7 @@ void oai_webrtc() {
   peer_connection_oniceconnectionstatechange(peer_connection,
                                              oai_onconnectionstatechange_task);
   peer_connection_onicecandidate(peer_connection, oai_on_icecandidate_task);
+  peer_connection_ondatachannel(peer_connection, on_datachannel_message, on_datachannel_open, on_datachannel_close);
   peer_connection_create_offer(peer_connection);
 
   is_peer_connected = (peer_connection != NULL);

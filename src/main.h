@@ -15,6 +15,8 @@ void oai_webrtc();
 void oai_http_request(char *offer, char *answer, const char *secret);
 
 char* fetch_client_secret(char* out_buffer, char *out_secret, size_t out_size);
+void send_webrtc_message(const char* message);
+
 void update_display();
 void set_display_dirty();
 
