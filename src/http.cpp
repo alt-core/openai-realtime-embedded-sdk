@@ -1,6 +1,7 @@
 #include <esp_http_client.h>
 #include <esp_log.h>
 #include <string.h>
+#include <cJSON.h>
 
 #include "main.h"
 
@@ -69,7 +70,63 @@ esp_err_t oai_http_event_handler(esp_http_client_event_t *evt) {
   return ESP_OK;
 }
 
-void oai_http_request(char *offer, char *answer) {
+char* fetch_client_secret(char* out_buffer, char *out_secret, size_t out_size) {
+  ESP_LOGI(LOG_TAG, "Starting to fetch client secret");
+  esp_http_client_config_t cfg;
+  memset(&cfg, 0, sizeof(cfg));
+  cfg.url = "https://api.openai.com/v1/realtime/sessions";
+  cfg.event_handler = oai_http_event_handler; 
+  cfg.user_data = out_buffer; // レスポンスを受け取るバッファ
+
+  esp_http_client_handle_t client = esp_http_client_init(&cfg);
+  esp_http_client_set_method(client, HTTP_METHOD_POST);
+  esp_http_client_set_header(client, "Authorization", "Bearer " OPENAI_API_KEY);
+  esp_http_client_set_header(client, "Content-Type", "application/json");
+
+  static const char *body = "{\"model\":\"gpt-4o-realtime-preview-2024-12-17\",\"voice\":\"sage\",\"instructions\":\"When you hear Japanese, translate it into English. When you hear English, translate it into Japanese. You are a professional interpreter, so speak only for interpretation.\"}";
+  esp_http_client_set_post_field(client, body, strlen(body));
+
+  esp_err_t err;
+  while(true) {
+    err = esp_http_client_perform(client);
+    if(err != ESP_ERR_HTTP_EAGAIN) { break; }
+  }
+
+  if (err == ESP_OK) {
+    int status_code = esp_http_client_get_status_code(client);
+    if (status_code == 200) {
+      ESP_LOGI(LOG_TAG, "HTTP request successful");
+      ESP_LOGI(LOG_TAG, "Response: %s", out_buffer);
+      cJSON *root = cJSON_Parse(out_buffer);
+      if (root) {
+        cJSON *data = cJSON_GetObjectItem(root, "client_secret");
+        if (data) {
+          cJSON *secret_val = cJSON_GetObjectItem(data, "value");
+          if (secret_val && cJSON_IsString(secret_val)) {
+            strncpy(out_secret, secret_val->valuestring, out_size - 1);
+            out_secret[out_size - 1] = '\0';
+            ESP_LOGI(LOG_TAG, "Client secret: %s", out_secret);
+          } else {
+            ESP_LOGE(LOG_TAG, "Failed to find client_secret value in JSON");
+          }
+        } else {
+          ESP_LOGE(LOG_TAG, "Failed to find data in JSON");
+        }
+        cJSON_Delete(root);
+      } else {
+        ESP_LOGE(LOG_TAG, "Failed to parse JSON");
+      }
+    } else {
+      ESP_LOGE(LOG_TAG, "HTTP request failed with status code: %d", status_code);
+    }
+  } else {
+    ESP_LOGE(LOG_TAG, "HTTP request failed: %s", esp_err_to_name(err));
+  }
+  esp_http_client_cleanup(client);
+  return out_secret;
+}
+
+void oai_http_request(char *offer, char *answer, const char *secret) {
   esp_http_client_config_t config;
   memset(&config, 0, sizeof(esp_http_client_config_t));
 
@@ -77,7 +134,8 @@ void oai_http_request(char *offer, char *answer) {
   config.event_handler = oai_http_event_handler;
   config.user_data = answer;
 
-  snprintf(answer, MAX_HTTP_OUTPUT_BUFFER, "Bearer %s", OPENAI_API_KEY);
+  // 取得した client_secret を Bearer トークンに
+  snprintf(answer, MAX_HTTP_OUTPUT_BUFFER, "Bearer %s", secret);
 
   esp_http_client_handle_t client = esp_http_client_init(&config);
   esp_http_client_set_method(client, HTTP_METHOD_POST);

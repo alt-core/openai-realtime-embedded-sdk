@@ -216,10 +216,25 @@ void oai_init_audio_encoder() {
 }
 
 void oai_send_audio(PeerConnection *peer_connection) {
+  static int silence_frame_count = 0;
   size_t bytes_read = 0;
   if( esp_err_t err = i2s_read(I2S_NUM_0, encoder_input_buffer, BUFFER_SAMPLES*sizeof(opus_int16), &bytes_read,
            portMAX_DELAY) ; err != ESP_OK ) {
     ESP_LOGE(TAG, "Failed to read audio data from I2S: %s", esp_err_to_name(err));
+  }
+
+  if (!is_microphone_active) {
+    // マイクが無効な場合、音声をマスク
+    if (silence_frame_count < 100) {
+      memset(encoder_input_buffer, 0, BUFFER_SAMPLES*sizeof(opus_int16));
+      silence_frame_count++;
+    } else {
+      // VADを認識するには十分な一定の無音を送信したので送信を止める
+      return;
+    }
+  } else {
+    // マイクが有効な場合、カウンタをリセット
+    silence_frame_count = 0;
   }
 
 #ifdef CONFIG_MEDIA_ENABLE_DEBUG_AUDIO_UDP_CLIENT

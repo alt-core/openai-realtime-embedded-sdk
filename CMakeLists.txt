@@ -17,7 +17,7 @@ if(NOT DEFINED ENV{OPENAI_API_KEY})
 endif()
 
 add_compile_definitions(OPENAI_API_KEY="$ENV{OPENAI_API_KEY}")
-add_compile_definitions(OPENAI_REALTIMEAPI="https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01")
+add_compile_definitions(OPENAI_REALTIMEAPI="https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17")
 
 set(COMPONENTS src)
 set(EXTRA_COMPONENT_DIRS "src" "components/srtp" "components/peer" "components/esp-libopus")
