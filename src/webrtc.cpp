@@ -32,6 +32,7 @@ static void oai_onconnectionstatechange_task(PeerConnectionState state,
 
   if (state == PEER_CONNECTION_DISCONNECTED ||
       state == PEER_CONNECTION_CLOSED) {
+    is_peer_connected = false;
 #ifndef LINUX_BUILD
     esp_restart();
 #endif
@@ -51,6 +52,7 @@ static void oai_onconnectionstatechange_task(PeerConnectionState state,
     }
     xTaskCreateStaticPinnedToCore(oai_send_audio_task, "audio_publisher", stack_size,
                                   NULL, 7, stack_memory, &task_buffer, 0);
+    is_peer_connected = true;
 #endif
   }
 }
@@ -128,5 +130,4 @@ void oai_webrtc() {
   peer_connection_ondatachannel(peer_connection, on_datachannel_message, on_datachannel_open, on_datachannel_close);
   peer_connection_create_offer(peer_connection);
 
-  is_peer_connected = (peer_connection != NULL);
 }
