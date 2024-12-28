@@ -91,9 +91,7 @@ extern "C" void app_main(void) {
       display_dirty = false;
     }
 
-    if (is_peer_connected) {
-      peer_connection_loop(peer_connection);
-    }
+    peer_connection_loop(peer_connection);
 
     vTaskDelay(pdMS_TO_TICKS(TICK_INTERVAL));
   }
@@ -104,9 +102,7 @@ int main(void) {
   peer_init();
   oai_webrtc();
   while (true) {
-    if (is_peer_connected) {
-      peer_connection_loop(peer_connection);
-    }
+    peer_connection_loop(peer_connection);
     vTaskDelay(pdMS_TO_TICKS(TICK_INTERVAL));
   }
 }
