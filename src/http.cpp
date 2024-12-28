@@ -83,7 +83,11 @@ char* fetch_client_secret(char* out_buffer, char *out_secret, size_t out_size) {
   esp_http_client_set_header(client, "Authorization", "Bearer " OPENAI_API_KEY);
   esp_http_client_set_header(client, "Content-Type", "application/json");
 
-  static const char *body = "{\"model\":\"gpt-4o-realtime-preview-2024-12-17\",\"voice\":\"sage\",\"turn_detection\":{\"type\":\"server_vad\",\"create_response\":false},\"instructions\":\"When you hear Japanese, translate it into English. When you hear English, translate it into Japanese. You are a professional interpreter, so speak only for interpretation.\"}";
+#if 0
+  static const char *body = "{\"model\":\"gpt-4o-realtime-preview-2024-12-17\",\"voice\":\"sage\",\"turn_detection\":null,\"instructions\":\"When you hear Japanese, translate it into English. When you hear English, translate it into Japanese. You are a professional interpreter, so speak only for interpretation.\"}";
+#else
+  static const char *body = "{\"model\":\"gpt-4o-realtime-preview-2024-12-17\",\"voice\":\"sage\",\"instructions\":\"When you hear Japanese, translate it into English. When you hear English, translate it into Japanese. You are a professional interpreter, so speak only for interpretation.\"}";
+#endif
   esp_http_client_set_post_field(client, body, strlen(body));
 
   esp_err_t err;

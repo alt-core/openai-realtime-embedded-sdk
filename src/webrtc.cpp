@@ -10,8 +10,8 @@
 #include "main.h"
 
 PeerConnection *peer_connection = NULL;
+uint16_t events_sid = 0xffff;
 bool is_peer_connected = false;
-bool is_datachannel_opened = false;
 
 #ifndef LINUX_BUILD
 StaticTask_t task_buffer;
@@ -33,27 +33,12 @@ static void oai_onconnectionstatechange_task(PeerConnectionState state,
   if (state == PEER_CONNECTION_DISCONNECTED ||
       state == PEER_CONNECTION_CLOSED) {
     is_peer_connected = false;
+    set_display_dirty();
 #ifndef LINUX_BUILD
     esp_restart();
 #endif
   } else if (state == PEER_CONNECTION_CONNECTED) {
-#ifndef LINUX_BUILD
-#if CONFIG_SPIRAM
-    constexpr size_t stack_size = 20000;
-    StackType_t *stack_memory = (StackType_t *)heap_caps_malloc(
-        stack_size * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
-#else // CONFIG_SPIRAM
-    constexpr size_t stack_size = 20000;
-    StackType_t *stack_memory = (StackType_t *)malloc(stack_size * sizeof(StackType_t));
-#endif // CONFIG_SPIRAM
-    if (stack_memory == nullptr) {
-      ESP_LOGE(LOG_TAG, "Failed to allocate stack memory for audio publisher.");
-      esp_restart();
-    }
-    xTaskCreateStaticPinnedToCore(oai_send_audio_task, "audio_publisher", stack_size,
-                                  NULL, 7, stack_memory, &task_buffer, 0);
-    is_peer_connected = true;
-#endif
+  } else if (state == PEER_CONNECTION_COMPLETED) {
   }
 }
 
@@ -64,14 +49,35 @@ static void oai_on_icecandidate_task(char *description, void *user_data) {
   peer_connection_set_remote_description(peer_connection, local_buffer);
 }
 
-void send_webrtc_message(const char* message) {
-  if (is_peer_connected && is_datachannel_opened) {
-    peer_connection_datachannel_send(peer_connection, (char*)message, strlen(message));
+void send_event_message(const char* message) {
+  if (is_peer_connected && events_sid != 0xffff) {
+    peer_connection_datachannel_send_sid(peer_connection, (char*)message, strlen(message), events_sid);
   }
 }
 
 static void on_datachannel_open(void* user_data) {
-  is_datachannel_opened = true;
+  ESP_LOGI(LOG_TAG, "DataChannel opened");
+
+#ifndef LINUX_BUILD
+#if CONFIG_SPIRAM
+  constexpr size_t stack_size = 20000;
+  StackType_t *stack_memory = (StackType_t *)heap_caps_malloc(
+      stack_size * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
+#else // CONFIG_SPIRAM
+  constexpr size_t stack_size = 20000;
+  StackType_t *stack_memory = (StackType_t *)malloc(stack_size * sizeof(StackType_t));
+#endif // CONFIG_SPIRAM
+  if (stack_memory == nullptr) {
+    ESP_LOGE(LOG_TAG, "Failed to allocate stack memory for audio publisher.");
+    esp_restart();
+  }
+  xTaskCreateStaticPinnedToCore(oai_send_audio_task, "audio_publisher", stack_size,
+                                NULL, 7, stack_memory, &task_buffer, 0);
+  peer_connection_create_datachannel(peer_connection, "oai-events", &events_sid);
+  ESP_LOGI(LOG_TAG, "DataChannel SID: %d", events_sid);
+  is_peer_connected = true;
+  set_display_dirty();
+#endif
 }
 
 static void on_datachannel_close(void* user_data) {
@@ -129,5 +135,4 @@ void oai_webrtc() {
   peer_connection_onicecandidate(peer_connection, oai_on_icecandidate_task);
   peer_connection_ondatachannel(peer_connection, on_datachannel_message, on_datachannel_open, on_datachannel_close);
   peer_connection_create_offer(peer_connection);
-
 }
