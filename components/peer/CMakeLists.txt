@@ -17,6 +17,11 @@ file(READ ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/libpeer/src/config.h INPUT_CONT
 string(REPLACE "#define KEEPALIVE_CONNCHECK 10000" "#define KEEPALIVE_CONNCHECK 0" MODIFIED_CONTENT ${INPUT_CONTENT})
 file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/libpeer/src/config.h ${MODIFIED_CONTENT})
 
+# Reduce data buffer size
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/libpeer/src/config.h INPUT_CONTENT)
+string(REPLACE "#define DATA_RB_DATA_LENGTH (SCTP_MTU * 128)" "#define DATA_RB_DATA_LENGTH (SCTP_MTU * 16)" MODIFIED_CONTENT ${INPUT_CONTENT})
+file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/libpeer/src/config.h ${MODIFIED_CONTENT})
+
 
 if(NOT IDF_TARGET STREQUAL linux)
   add_definitions("-DESP32")
