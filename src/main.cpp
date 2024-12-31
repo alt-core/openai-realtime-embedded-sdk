@@ -62,14 +62,6 @@ extern "C" void app_main(void) {
   M5.Lcd.clear();
   update_display(); // Display initial state
 
-#ifdef AUDIO_TEST
-  oai_init_audio_capture();
-  while (true) {
-    M5.update();
-    vTaskDelay(pdMS_TO_TICKS(TICK_INTERVAL));
-  }
-#endif
-
   ESP_ERROR_CHECK(esp_event_loop_create_default());
   peer_init();
   oai_wifi();

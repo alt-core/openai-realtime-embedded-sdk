@@ -10,10 +10,6 @@
 #include <vector>
 #include <sys/socket.h>
 
-#ifdef AUDIO_TEST
-extern unsigned char audio[128000];
-#endif
-
 #define OPUS_OUT_BUFFER_SIZE 1276  // 1276 bytes is recommended by opus_encode
 #ifdef MEDIA_SAMPLE_RATE_16K
 #define SAMPLE_RATE 16000
@@ -153,23 +149,6 @@ void oai_init_audio_capture() {
   init_i2s(true, false); // speaker mode
 #else
   init_i2s(true, true);
-#endif
-
-#ifdef AUDIO_TEST
-  {
-    for(size_t i = 0; i < sizeof(audio)/4; i++) {
-      const auto value = reinterpret_cast<std::uint32_t*>(audio)[i];
-      const auto high_word = value >> 16;
-      const auto low_word = value & 0xFFFF;
-      reinterpret_cast<std::uint32_t*>(audio)[i] = (low_word << 16) | high_word;
-    }
-
-    std::size_t bytes_written = 0;
-    if( esp_err_t err = i2s_channel_write(get_i2s_tx_handle(), audio, sizeof(audio),
-              &bytes_written, portMAX_DELAY); err != ESP_OK ) {
-      ESP_LOGE(TAG, "Failed to write audio data to I2S: %s", esp_err_to_name(err));
-    }
-  }
 #endif
 }
 
