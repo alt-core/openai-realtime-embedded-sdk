@@ -11,7 +11,7 @@
 #include <sys/socket.h>
 
 #define OPUS_OUT_BUFFER_SIZE 1276  // 1276 bytes is recommended by opus_encode
-#ifdef MEDIA_SAMPLE_RATE_16K
+#ifdef CONFIG_MEDIA_SAMPLE_RATE_16K
 #define SAMPLE_RATE 16000
 #else
 #define SAMPLE_RATE 8000
@@ -211,7 +211,7 @@ void init_i2s(bool speaker, bool mic) {
     std_cfg.slot_cfg.bit_order_lsb = false;
 #endif // SOC_I2S_HW_VERSION_1
 #ifdef CONFIG_MEDIA_I2S_RX_TX_SHARED
-    if (speaker)
+    if (speaker) {
       i2s_channel_init_std_mode(s_i2s_tx_handle, &std_cfg);
       i2s_channel_enable(s_i2s_tx_handle);
     }

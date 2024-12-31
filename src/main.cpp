@@ -93,8 +93,8 @@ extern "C" void app_main(void) {
 
         init_i2s(false, true);
         is_microphone_active = true;
-#endif
       }
+#endif
     } else {
       if (is_microphone_active) {
         is_microphone_active = false;

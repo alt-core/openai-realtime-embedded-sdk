@@ -9,8 +9,8 @@
 
 #include "main.h"
 
-#ifdef MEDIA_SAMPLE_RATE_16K
-#define SEND_AUDIO_TASK_STACK_SIZE 40000
+#ifdef CONFIG_MEDIA_SAMPLE_RATE_16K
+#define SEND_AUDIO_TASK_STACK_SIZE 30000
 #else
 #define SEND_AUDIO_TASK_STACK_SIZE 20000
 #endif
@@ -45,7 +45,7 @@ static void oai_onconnectionstatechange_task(PeerConnectionState state,
 #endif
   } else if (state == PEER_CONNECTION_CONNECTED) {
   } else if (state == PEER_CONNECTION_COMPLETED) {
-#ifndef WEBRTC_OPEN_DATA_CHANNEL
+#ifndef CONFIG_WEBRTC_OPEN_DATA_CHANNEL
 #ifndef LINUX_BUILD
 #if CONFIG_SPIRAM
   constexpr size_t stack_size = SEND_AUDIO_TASK_STACK_SIZE;
@@ -86,7 +86,7 @@ void send_event_message(const char* message) {
 static void on_datachannel_open(void* user_data) {
   ESP_LOGI(LOG_TAG, "DataChannel opened");
 
-#ifdef WEBRTC_OPEN_DATA_CHANNEL
+#ifdef CONFIG_WEBRTC_OPEN_DATA_CHANNEL
 #ifndef LINUX_BUILD
 #if CONFIG_SPIRAM
   constexpr size_t stack_size =  SEND_AUDIO_TASK_STACK_SIZE;
@@ -114,7 +114,10 @@ static void on_datachannel_close(void* user_data) {
 }
 
 static void on_datachannel_message(char* msg, size_t size, void* user_data, uint16_t sid) {
-  ESP_LOGI(LOG_TAG, "Received WebRTC message: %.*s", size, msg);
+  constexpr char delta_msg[] = "{\"type\":\"response.audio_transcript.delta\"";
+  if (strncmp(msg, delta_msg, sizeof(delta_msg)-1) != 0) {
+    ESP_LOGI(LOG_TAG, "Received WebRTC message: %.*s", size, msg);
+  }
 }
 
 void oai_webrtc() {
@@ -141,7 +144,7 @@ void oai_webrtc() {
       .ice_servers = {},
       .audio_codec = CODEC_OPUS,
       .video_codec = CODEC_NONE,
-#ifdef WEBRTC_OPEN_DATA_CHANNEL
+#ifdef CONFIG_WEBRTC_OPEN_DATA_CHANNEL
       .datachannel = DATA_CHANNEL_STRING,
 #else
       .datachannel = DATA_CHANNEL_NONE,
