@@ -59,6 +59,26 @@ menu "Embedded SDK Configuration"
             If this option is set (not default), 
             the I2S TX will only use the left slot. 
             Otherwise, it will use both left and right slots.
+    config MEDIA_I2S_HALF_DUPLEX
+        bool "I2S Half Duplex"
+        default n
+        help
+            If this option is set, the I2S will operate in half duplex mode.
+    config MEDIA_I2S_RX_I2S_NUM
+        int "I2S RX I2S Number"
+        default 0
+        help
+            The I2S number for RX.
+    config MEDIA_I2S_TX_I2S_NUM
+        int "I2S TX I2S Number"
+        default 1
+        help
+            The I2S number for TX.
+    config MEDIA_SAMPLE_RATE_16K
+        bool "16K Sample Rate"
+        default n
+        help
+            If this option is set, the sample rate will be 16k otherwise it will be 8k.
     config MEDIA_INIT_MICROPHONE_AND_SPEAKER
         bool "Init Microphone and Speaker"
         default n
@@ -101,4 +121,9 @@ menu "Embedded SDK Configuration"
         depends on ENABLE_HEAP_MONITOR
         help
             The interval in milliseconds to print the heap monitor.
+    config WEBRTC_OPEN_DATA_CHANNEL
+        bool "Open Data Channel"
+        default y
+        help
+            If this option is set, the data channel will be opened.
 endmenu

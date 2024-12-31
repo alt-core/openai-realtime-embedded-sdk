@@ -9,6 +9,12 @@
 
 #include "main.h"
 
+#ifdef MEDIA_SAMPLE_RATE_16K
+#define SEND_AUDIO_TASK_STACK_SIZE 40000
+#else
+#define SEND_AUDIO_TASK_STACK_SIZE 20000
+#endif
+
 PeerConnection *peer_connection = NULL;
 uint16_t events_sid = 0xffff;
 bool is_peer_connected = false;
@@ -39,6 +45,28 @@ static void oai_onconnectionstatechange_task(PeerConnectionState state,
 #endif
   } else if (state == PEER_CONNECTION_CONNECTED) {
   } else if (state == PEER_CONNECTION_COMPLETED) {
+#ifndef WEBRTC_OPEN_DATA_CHANNEL
+#ifndef LINUX_BUILD
+#if CONFIG_SPIRAM
+  constexpr size_t stack_size = SEND_AUDIO_TASK_STACK_SIZE;
+  StackType_t *stack_memory = (StackType_t *)heap_caps_malloc(
+      stack_size * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
+#else // CONFIG_SPIRAM
+  constexpr size_t stack_size = SEND_AUDIO_TASK_STACK_SIZE;
+  StackType_t *stack_memory = (StackType_t *)malloc(stack_size * sizeof(StackType_t));
+#endif // CONFIG_SPIRAM
+  if (stack_memory == nullptr) {
+    ESP_LOGE(LOG_TAG, "Failed to allocate stack memory for audio publisher.");
+    esp_restart();
+  }
+  xTaskCreateStaticPinnedToCore(oai_send_audio_task, "audio_publisher", stack_size,
+                                NULL, 7, stack_memory, &task_buffer, 0);
+  //peer_connection_create_datachannel(peer_connection, "oai-events", &events_sid);
+  //ESP_LOGI(LOG_TAG, "DataChannel SID: %d", events_sid);
+  is_peer_connected = true;
+  set_display_dirty();
+#endif
+#endif
   }
 }
 
@@ -58,13 +86,14 @@ void send_event_message(const char* message) {
 static void on_datachannel_open(void* user_data) {
   ESP_LOGI(LOG_TAG, "DataChannel opened");
 
+#ifdef WEBRTC_OPEN_DATA_CHANNEL
 #ifndef LINUX_BUILD
 #if CONFIG_SPIRAM
-  constexpr size_t stack_size = 20000;
+  constexpr size_t stack_size =  SEND_AUDIO_TASK_STACK_SIZE;
   StackType_t *stack_memory = (StackType_t *)heap_caps_malloc(
       stack_size * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
 #else // CONFIG_SPIRAM
-  constexpr size_t stack_size = 20000;
+  constexpr size_t stack_size = SEND_AUDIO_TASK_STACK_SIZE;
   StackType_t *stack_memory = (StackType_t *)malloc(stack_size * sizeof(StackType_t));
 #endif // CONFIG_SPIRAM
   if (stack_memory == nullptr) {
@@ -77,6 +106,7 @@ static void on_datachannel_open(void* user_data) {
   ESP_LOGI(LOG_TAG, "DataChannel SID: %d", events_sid);
   is_peer_connected = true;
   set_display_dirty();
+#endif
 #endif
 }
 
@@ -111,7 +141,11 @@ void oai_webrtc() {
       .ice_servers = {},
       .audio_codec = CODEC_OPUS,
       .video_codec = CODEC_NONE,
+#ifdef WEBRTC_OPEN_DATA_CHANNEL
       .datachannel = DATA_CHANNEL_STRING,
+#else
+      .datachannel = DATA_CHANNEL_NONE,
+#endif
       .onaudiotrack = [](uint8_t *data, size_t size, void *userdata) -> void {
 #ifndef LINUX_BUILD
         oai_audio_decode(data, size);

@@ -18,6 +18,7 @@ static esp_timer_handle_t s_monitor_timer;
 #endif // CONFIG_ENABLE_HEAP_MONITOR
 
 bool is_microphone_active = false;
+bool is_speaker_active = true;
 bool display_dirty = false;
 extern PeerConnection *peer_connection;
 
@@ -61,6 +62,14 @@ extern "C" void app_main(void) {
   M5.Lcd.clear();
   update_display(); // Display initial state
 
+#ifdef AUDIO_TEST
+  oai_init_audio_capture();
+  while (true) {
+    M5.update();
+    vTaskDelay(pdMS_TO_TICKS(TICK_INTERVAL));
+  }
+#endif
+
   ESP_ERROR_CHECK(esp_event_loop_create_default());
   peer_init();
   oai_wifi();
@@ -77,13 +86,33 @@ extern "C" void app_main(void) {
 
     if (debounce_counter > 0) {
       debounce_counter--;
-    } else if (M5.Touch.getCount()) { // Check for screen touch
+    } else if (M5.Touch.getCount() > 0 || M5.BtnA.isHolding() || M5.BtnB.isHolding()) {
+#ifndef CONFIG_MEDIA_I2S_HALF_DUPLEX
+      if (!is_microphone_active) {
+        set_display_dirty();
+      }
       is_microphone_active = true;
-      set_display_dirty();
       debounce_counter = debounce_threshold; // Reset debounce counter
-    } else if (is_microphone_active) {
-      is_microphone_active = false;
-      set_display_dirty();
+#else
+      if (is_speaker_active) {
+        is_speaker_active = false;
+        set_display_dirty();
+        debounce_counter = debounce_threshold; // Reset debounce counter
+
+        init_i2s(false, true);
+        is_microphone_active = true;
+#endif
+      }
+    } else {
+      if (is_microphone_active) {
+        is_microphone_active = false;
+        set_display_dirty();
+
+#ifdef CONFIG_MEDIA_I2S_HALF_DUPLEX
+        init_i2s(true, false);
+        is_speaker_active = true;
+#endif
+      }
     }
 
     if (display_dirty) {
